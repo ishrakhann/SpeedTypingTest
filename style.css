@@ -1,0 +1,35 @@
+.typing-text {
+    font-family: 'Courier New', monospace;
+    line-height: 1.8;
+    letter-spacing: 0.5px;
+}
+.current-word {
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+.correct {
+    color: #10b981;
+}
+.incorrect {
+    color: #ef4444;
+    text-decoration: underline;
+    background-color: #fef2f2;
+}
+.cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background-color: #3b82f6;
+    animation: blink 1s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+}
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+.progress-ring {
+    transition: stroke-dashoffset 0.1s linear;
+}
