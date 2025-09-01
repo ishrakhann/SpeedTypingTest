@@ -32,4 +32,19 @@
 }
 .progress-ring {
     transition: stroke-dashoffset 0.1s linear;
+
+}
+.correct {
+    color: #10b981;
+}
+.incorrect {
+    color: #ef4444;
+    text-decoration: underline;
+    background-color: #fef2f2;
+}
+.current-word {
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 2px 4px;
+    border-radius: 4px;
 }
