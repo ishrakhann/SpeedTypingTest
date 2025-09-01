@@ -37,25 +37,25 @@ class TypingTest {
         this.finalTime = document.getElementById('final-time');
         this.finalErrors = document.getElementById('final-errors');
         this.newTestBtn = document.getElementById('new-test-btn');
+
+        // Select progress ring paths by ID (add these IDs in your HTML)
+        this.wpmProgress = document.getElementById('wpm-progress');
+        this.accuracyProgress = document.getElementById('accuracy-progress');
     }
 
     bindEvents() {
         this.typingInput.addEventListener('input', (e) => this.handleInput(e));
         this.restartBtn.addEventListener('click', () => this.restartTest());
         this.newTestBtn.addEventListener('click', () => this.restartTest());
-        
-        // Prevent spacebar from scrolling
-        this.typingInput.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-            }
-        });
+
+        // Removed space-preventing listener to allow spaces in input
     }
 
     loadNewText() {
         const randomIndex = Math.floor(Math.random() * this.sampleTexts.length);
         this.currentText = this.sampleTexts[randomIndex];
         this.words = this.currentText.split(' ');
+        this.currentWordIndex = 0;
         this.renderText();
     }
 
@@ -73,6 +73,35 @@ class TypingTest {
         this.textDisplay.innerHTML = html;
     }
 
+    renderTextWithInput(input) {
+        let html = '';
+        this.words.forEach((word, index) => {
+            if (index < this.currentWordIndex) {
+                html += `<span class="correct">${word}</span> `;
+            } else if (index === this.currentWordIndex) {
+                // Show per-character correctness
+                let wordHtml = '';
+                for (let i = 0; i < word.length; i++) {
+                    let charClass = '';
+                    if (i < input.length) {
+                        charClass = (input[i] === word[i]) ? 'correct' : 'incorrect';
+                    }
+                    wordHtml += `<span class="${charClass}">${word[i]}</span>`;
+                }
+                // Extra chars typed beyond word length are incorrect
+                if (input.length > word.length) {
+                    for (let i = word.length; i < input.length; i++) {
+                        wordHtml += `<span class="incorrect">${input[i]}</span>`;
+                    }
+                }
+                html += `<span class="current-word">${wordHtml}</span> `;
+            } else {
+                html += `<span>${word}</span> `;
+            }
+        });
+        this.textDisplay.innerHTML = html;
+    }
+
     startTest() {
         if (!this.isRunning) {
             this.isRunning = true;
@@ -86,10 +115,9 @@ class TypingTest {
         this.timer = setInterval(() => {
             this.timeLeft--;
             this.timerDisplay.textContent = `${this.timeLeft}s`;
-            
-            // Update progress rings
+
             this.updateProgressRings();
-            
+
             if (this.timeLeft <= 0) {
                 this.endTest();
             }
@@ -97,19 +125,18 @@ class TypingTest {
     }
 
     updateProgressRings() {
-        const wpmProgress = document.querySelector('#wpm ~ .progress-ring');
-        const accuracyProgress = document.querySelector('#accuracy ~ .progress-ring');
-        
-        if (wpmProgress) {
-            const wpmValue = parseInt(this.wpmDisplay.textContent);
-            const wpmOffset = 100 - Math.min(wpmValue / 100 * 100, 100);
-            wpmProgress.style.strokeDashoffset = wpmOffset;
+        if (this.wpmProgress) {
+            const wpmValue = parseInt(this.wpmDisplay.textContent) || 0;
+            // Stroke dashoffset: 100% - (wpm capped at 100)
+            const wpmOffset = 100 - Math.min(wpmValue, 100);
+            this.wpmProgress.style.strokeDashoffset = wpmOffset;
         }
-        
-        if (accuracyProgress) {
-            const accuracyValue = parseInt(this.accuracyDisplay.textContent);
+
+        if (this.accuracyProgress) {
+            const accuracyText = this.accuracyDisplay.textContent;
+            const accuracyValue = parseInt(accuracyText) || 100;
             const accuracyOffset = 100 - accuracyValue;
-            accuracyProgress.style.strokeDashoffset = accuracyOffset;
+            this.accuracyProgress.style.strokeDashoffset = accuracyOffset;
         }
     }
 
@@ -120,36 +147,53 @@ class TypingTest {
 
         const input = this.typingInput.value;
         const currentWord = this.words[this.currentWordIndex];
-        
-        // Check if space was pressed (word completed)
+
         if (input.endsWith(' ')) {
-            if (input.trim() === currentWord) {
+            const typedWord = input.trim();
+
+            if (typedWord === currentWord) {
                 this.correctChars += currentWord.length;
             } else {
-                this.errors++;
+                const errorsInWord = this.countErrors(currentWord, typedWord);
+                this.errors += errorsInWord;
+                // Add correct chars only for correctly typed chars
+                this.correctChars += Math.max(currentWord.length - errorsInWord, 0);
             }
             this.totalChars += currentWord.length;
-            
-            this.typingInput.value = '';
+
             this.currentWordIndex++;
-            
+
             if (this.currentWordIndex >= this.words.length) {
                 this.loadNewText();
-                this.currentWordIndex = 0;
             }
-            
+
+            this.typingInput.value = '';
             this.renderText();
             this.updateStats();
+        } else {
+            // Update current word highlighting with per-character correctness
+            this.renderTextWithInput(input);
         }
     }
 
+    countErrors(word1, word2) {
+        let errors = 0;
+        const len = Math.max(word1.length, word2.length);
+        for (let i = 0; i < len; i++) {
+            if (word1[i] !== word2[i]) {
+                errors++;
+            }
+        }
+        return errors;
+    }
+
     updateStats() {
-        const elapsedTime = (Date.now() - this.startTime) / 1000 / 60; // in minutes
-        const wpm = Math.round((this.correctChars / 5) / elapsedTime);
-        const accuracy = this.totalChars > 0 
+        const elapsedTime = (Date.now() - this.startTime) / 1000 / 60; // minutes
+        const wpm = elapsedTime > 0 ? Math.round((this.correctChars / 5) / elapsedTime) : 0;
+        const accuracy = this.totalChars > 0
             ? Math.round((this.correctChars / this.totalChars) * 100)
             : 100;
-        
+
         this.wpmDisplay.textContent = isNaN(wpm) ? '0' : wpm;
         this.accuracyDisplay.textContent = `${accuracy}%`;
         this.updateProgressRings();
@@ -158,12 +202,12 @@ class TypingTest {
     endTest() {
         clearInterval(this.timer);
         this.isRunning = false;
-        
+
         this.finalWpm.textContent = this.wpmDisplay.textContent;
         this.finalAccuracy.textContent = this.accuracyDisplay.textContent;
         this.finalTime.textContent = `${this.timeLimit - this.timeLeft}s`;
         this.finalErrors.textContent = this.errors;
-        
+
         this.resultsPanel.classList.remove('hidden');
         this.typingInput.disabled = true;
     }
@@ -176,16 +220,16 @@ class TypingTest {
         this.correctChars = 0;
         this.totalChars = 0;
         this.errors = 0;
-        
+
         this.wpmDisplay.textContent = '0';
         this.accuracyDisplay.textContent = '100%';
-        this.timerDisplay.textContent = '60s';
-        
+        this.timerDisplay.textContent = `${this.timeLimit}s`;
+
         this.typingInput.value = '';
         this.typingInput.disabled = false;
-        
+
         this.resultsPanel.classList.add('hidden');
-        
+
         this.loadNewText();
         this.updateProgressRings();
     }
